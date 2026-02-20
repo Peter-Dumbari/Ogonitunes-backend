@@ -48,3 +48,17 @@ export const login = asyncHandler(async (req, res) => {
     status: "success",
   });
 });
+
+export const resetPassword = asyncHandler(async (req, res) => {
+  const { email, newPassword } = req.body;
+
+  const user = await User.findOne({ email });
+  if (!user) return res.status(400).json({ message: "User does not exist" });
+
+  user.password = newPassword;
+  await user.save();
+
+  res
+    .status(200)
+    .json({ message: "Password reset successful", status: "success" });
+});
