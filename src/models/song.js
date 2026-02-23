@@ -12,7 +12,10 @@ const songSchema = mongoose.Schema(
       ref: "genre",
       required: true,
     },
-
+    isBestOfWeek: {
+      type: Boolean,
+      default: false,
+    },
     title: {
       type: String,
       required: true,
