@@ -39,27 +39,41 @@ export const registerArtist = asyncHandler(async (req, res) => {
 
 export const update = asyncHandler(async (req, res) => {
   const { email } = req.body;
+  const file = req.file;
 
-  const artist = await Artist.findOne({ email });
-  if (!artist)
-    return res
-      .status(404)
-      .json({ message: "Artist not found", status: "error" });
+  const artist = await Artist.findOne({ email }).populate("songs");
 
-  const updateArtist = Artist.findByIdAndUpdate(artist._id, req.body, {
+  if (!artist) {
+    res.status(404);
+    throw new Error("Artist not found");
+  }
+
+  // ✅ delete old image if new one is uploaded
+  if (file && artist.image?.public_id) {
+    await cloudinary.uploader.destroy(artist.image.public_id);
+  }
+
+  // ✅ prepare update object
+  const updateData = {
+    ...req.body,
+  };
+
+  // ✅ if new image was uploaded
+  if (file) {
+    updateData.image = {
+      url: file.path,
+      public_id: file.filename,
+    };
+  }
+
+  const updatedArtist = await Artist.findByIdAndUpdate(artist._id, updateData, {
     new: true,
   });
 
-  if (updateArtist) {
-    res.status(200).json({
-      _id: updateArtist._id,
-      name: updateArtist.name,
-      full_name: updateArtist.full_name,
-      description: updateArtist.description,
-      image: updateArtist.image,
-      status: "Success",
-    });
-  }
+  res.status(200).json({
+    status: "success",
+    artist: updatedArtist,
+  });
 });
 
 export const getAll = asyncHandler(async (req, res) => {
@@ -98,16 +112,21 @@ export const deleteArtist = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   const artist = await Artist.findById(id);
+
   if (!artist) {
     res.status(404).json({
       message: "Artist not found",
       status: "Error",
     });
-  } else {
-    await Artist.findByIdAndDelete(id);
-    res.status(200).json({
-      message: "Artist deleted successfully",
-      status: "Success",
-    });
   }
+
+  if (artist.image && artist.image.public_id) {
+    await cloudinary.uploader.destroy(artist.image.public_id);
+  }
+
+  await Artist.findByIdAndDelete(id);
+  res.status(200).json({
+    message: "Artist deleted successfully",
+    status: "Success",
+  });
 });
