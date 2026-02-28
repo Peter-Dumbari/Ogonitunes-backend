@@ -1,5 +1,5 @@
 import asyncHandler from "express-async-handler";
-import { Artist } from "../models/artist";
+import { Artist } from "../models/artist.js";
 
 export const registerArtist = asyncHandler(async (req, res) => {
   const { name, full_name, description } = req.body;

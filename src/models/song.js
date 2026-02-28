@@ -16,6 +16,10 @@ const songSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    slug: {
+      type: String,
+      required: true,
+    },
     title: {
       type: String,
       required: true,

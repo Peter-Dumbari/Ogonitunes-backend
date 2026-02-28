@@ -1,4 +1,4 @@
-import { Genre } from "../models/genre";
+import { Genre } from "../models/genre.js";
 import asyncHandler from "express-async-handler";
 
 export const createGenre = asyncHandler(async (req, res) => {
@@ -26,8 +26,21 @@ export const createGenre = asyncHandler(async (req, res) => {
   }
 });
 
+export const getAllGenres = asyncHandler(async (req, res) => {
+  try {
+    const genres = await Genre.find();
+    res
+      .status(200)
+      .json({ message: "Genres retrieved", genres, status: "success" });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Failed to retrieve genres", error, status: "error" });
+  }
+});
+
 export const updateGenre = asyncHandler(async (req, res) => {
-  const id = req.params;
+  const { id } = req.params;
 
   try {
     const genre = await Genre.findById(id);

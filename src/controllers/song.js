@@ -1,14 +1,17 @@
 import asyncHandler from "express-async-handler";
 import slugify from "slugify";
-import { Song } from "../models/song";
-import cloudinary from "../../config/cloudinary";
+import { Song } from "../models/song.js";
+import cloudinary from "../../config/cloudinary.js";
+import { Artist } from "../models/artist.js";
 
 export const upload = asyncHandler(async (req, res) => {
   const { title, artist, genre, year_release } = req.body;
 
+  const artistName = await Artist.findById(artist);
+
   const image = req.files?.image;
   const audio = req.files?.audio;
-  const slug = slugify(`${title} ${artist}`, {
+  const slug = slugify(`${title} ${artistName?.name}`, {
     lower: true,
     strict: true,
   });
@@ -138,6 +141,19 @@ export const updateSong = asyncHandler(async (req, res) => {
       error: error.message,
     });
   }
+});
+
+export const downloadSong = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const song = await Song.findById(id);
+  if (!song)
+    return res.status(404).json({ message: "Song not found", status: "error" });
+
+  song.download_count = (song.download_count || 0) + 1;
+  await song.save();
+
+  return res.status(200).redirect(song.audio.url);
 });
 
 export const deleteSong = asyncHandler(async (req, res) => {
