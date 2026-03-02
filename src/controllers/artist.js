@@ -1,5 +1,6 @@
 import asyncHandler from "express-async-handler";
 import { Artist } from "../models/artist.js";
+import { Song } from "../models/song.js";
 
 export const registerArtist = asyncHandler(async (req, res) => {
   const { name, full_name, description } = req.body;
@@ -95,9 +96,11 @@ export const getById = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   const artist = await Artist.findById(id);
+  const songs = await Song.find({ artist: id }).populate("genre", "title");
   if (artist) {
     res.status(200).json({
       artist,
+      songs,
       status: "Success",
     });
   } else {
