@@ -4,6 +4,7 @@ import { Song } from "../models/song.js";
 import cloudinary from "../../config/cloudinary.js";
 import { Artist } from "../models/artist.js";
 import axios from "axios";
+import NodeID3 from "node-id3";
 
 export const upload = asyncHandler(async (req, res) => {
   const { title, artist, genre, year_release } = req.body;
@@ -23,6 +24,28 @@ export const upload = asyncHandler(async (req, res) => {
       res.status(400);
       throw new Error("Song already exists");
     }
+
+    // **Update ID3 tags**
+    const tags = {
+      title: title,
+      artist: artistName?.name || "Unknown Artist",
+    };
+
+    // If cover image is provided
+    if (image && image[0]) {
+      tags.APIC = image[0].path; // Path to cover image
+    }
+
+    // Update tags in the audio file before saving
+    const audioPath = audio[0].path;
+    const success = NodeID3.write(tags, audioPath);
+    if (!success) {
+      return res.status(500).json({
+        message: `Failed to update ID3 tags for: ${audioPath}`,
+        status: "error",
+      });
+    }
+
     const newSong = await Song.create({
       title,
       artist,
