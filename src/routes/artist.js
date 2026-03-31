@@ -15,6 +15,6 @@ router.post("/register", auth, uploadFile.single("image"), registerArtist);
 router.put("/update", auth, uploadFile.single("image"), update);
 router.get("/all", getAll);
 router.get("/:id", getById);
-router.delete("/:id", auth, deleteArtist);
+router.delete("/delete/:id", auth, deleteArtist);
 
 export default router;

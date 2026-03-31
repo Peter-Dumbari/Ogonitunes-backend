@@ -3,6 +3,7 @@ import slugify from "slugify";
 import { Song } from "../models/song.js";
 import cloudinary from "../../config/cloudinary.js";
 import { Artist } from "../models/artist.js";
+import axios from "axios";
 
 export const upload = asyncHandler(async (req, res) => {
   const { title, artist, genre, year_release } = req.body;
@@ -146,49 +147,57 @@ export const updateSong = asyncHandler(async (req, res) => {
 export const downloadSong = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  const song = await Song.findById(id);
+  const song = await Song.findById(id).populate("artist", "name");
   if (!song)
     return res.status(404).json({ message: "Song not found", status: "error" });
+
+  const fileUrl = song.audio.url;
+
+  const filename =
+    `${song.title} - ${song.artist.name} | Ogonitunes.mp3`.replace(
+      /[^\w\d\s.-]/g,
+      "",
+    );
+
+  const response = await axios.get(fileUrl, {
+    responseType: "stream",
+  });
+
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+  res.setHeader("Content-Type", "audio/mpeg");
 
   song.download_count = (song.download_count || 0) + 1;
   await song.save();
 
-  return res.status(200).redirect(song.audio.url);
+  response.data.pipe(res);
 });
-
 export const deleteSong = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  try {
-    const song = await Song.findById(id);
-    if (!song) {
-      res.status(404);
-      throw new Error("Song not found");
-    }
+  const song = await Song.findById(id);
 
-    await song.remove();
+  if (!song) {
+    res.status(404);
+    throw new Error("Song not found");
+  }
 
-    if (song.image && song.image.public_id) {
-      // delete image from cloudinary
-      await cloudinary.uploader.destroy(song.image.public_id);
-    }
+  // delete image
+  if (song.image?.public_id) {
+    await cloudinary.uploader.destroy(song.image.public_id);
+  }
 
-    if (song.audio && song.audio.public_id) {
-      // delete audio from cloudinary
-      await cloudinary.uploader.destroy(song.audio.public_id, {
-        resource_type: "auto", // VERY important for audio deletion
-      });
-    }
-
-    return res.status(200).json({
-      message: "Song deleted successfully",
-      status: "success",
-    });
-  } catch (error) {
-    return res.status(500).json({
-      message: "Failed to delete song",
-      error,
-      status: "error",
+  // delete audio (very important: resource_type)
+  if (song.audio?.public_id) {
+    await cloudinary.uploader.destroy(song.audio.public_id, {
+      resource_type: "video", // Cloudinary stores audio as video
     });
   }
+
+  await song.deleteOne();
+
+  res.status(200).json({
+    message: "Song deleted successfully",
+    status: "success",
+  });
 });
